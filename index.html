@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vision Weaver AI - Image to Artistic Vision</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Orbitron:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #030712; 
+            color: #D1D5DB; 
+            min-height: 100vh;
+            overflow-x: hidden;
+            background-image: radial-gradient(ellipse at top left, rgba(23, 37, 84, 0.6) 0%, transparent 50%),
+                              radial-gradient(ellipse at bottom right, rgba(59, 130, 246, 0.4) 0%, transparent 50%),
+                              radial-gradient(ellipse at center, rgba(40, 50, 100, 0.3) 0%, transparent 70%);
+        }
+        textarea::-webkit-scrollbar { width: 8px; }
+        textarea::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.05); border-radius: 10px; }
+        textarea::-webkit-scrollbar-thumb { background: rgba(99, 102, 241, 0.6); border-radius: 10px; }
+        textarea::-webkit-scrollbar-thumb:hover { background: rgba(129, 140, 248, 0.8); }
+        
+        .glassmorphic-panel {
+            background: rgba(17, 24, 39, 0.75); 
+            backdrop-filter: blur(20px) saturate(170%); 
+            -webkit-backdrop-filter: blur(20px) saturate(170%);
+            border: 1px solid rgba(255, 255, 255, 0.12); 
+            border-radius: 1.25rem; 
+            position: relative; 
+            overflow: hidden;
+        }
+        /* REMOVED SHINY EFFECT:
+        .glassmorphic-panel::before {
+            content: ''; position: absolute; top: 0; left: -130%; width: 70%; height: 100%;
+            background: linear-gradient(to right, transparent 0%, rgba(165, 180, 252, 0.1) 25%, rgba(190, 180, 255, 0.2) 50%, rgba(165, 180, 252, 0.1) 75%, transparent 100%);
+            transform: skewX(-25deg); animation: panelShineEffect 8s infinite linear; z-index: 0; opacity: 0.9;
+        }
+        @keyframes panelShineEffect { 0% { left: -130%; opacity: 0.6; } 50% { opacity: 0.9; } 100% { left: 190%; opacity: 0.6; } }
+        */
+
+        .file-input-area {
+            border: 2px dashed rgba(129, 140, 248, 0.45); 
+            background-color: rgba(30, 41, 59, 0.5); 
+            border-radius: 0.75rem; 
+            transition: all 0.3s ease;
+            min-height: 180px; 
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            position: relative; overflow: hidden; z-index: 1; 
+        }
+        .file-input-area:hover { border-color: rgba(165, 180, 252, 0.75); background-color: rgba(55, 65, 81, 0.6); }
+        .file-input-area.has-image-preview { 
+            padding: 0; border-style: solid; border-color: rgba(129, 140, 248, 0.4); 
+            background-color: #030712; box-shadow: 0 0 12px rgba(129, 140, 248, 0.2); 
+        }
+        .file-input-area.has-image-preview #dropzoneContent { display: none; }
+        #dropzoneContent { display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; z-index: 1; }
+        #referenceImageInput { display: none; }
+        #uploadedImagePreview {
+            max-width: 100%; max-height: 100%; object-fit: contain; display: none; 
+            border-radius: calc(0.75rem - 2px); position: absolute; 
+            top: 0; left: 0; right: 0; bottom: 0; margin: auto; 
+            transition: filter 0.3s ease-in-out, opacity 0.3s ease-in-out; z-index: 1; 
+        }
+        #uploadedImagePreview.has-image { display: block; }
+        
+        .scan-animation::after {
+            content: ''; position: absolute; left: 5%; width: 90%; height: 3px;
+            background-color: #00FF00; 
+            box-shadow: 0 0 10px 2px rgba(0, 255, 0, 0.7), 0 0 20px 5px rgba(0, 255, 0, 0.5);
+            border-radius: 2px; animation: qrScanLine 1.8s infinite ease-in-out alternate;
+            z-index: 2; opacity: 0.9;
+        }
+        .scan-animation img#uploadedImagePreview { filter: brightness(0.7) contrast(1.0) grayscale(0.2); opacity: 0.7; }
+        @keyframes qrScanLine { 0% { top: 7%; opacity: 0.85; } 100% { top: 93%; transform: translateY(-100%); opacity: 0.85; } }
+
+        .action-btn {
+            font-family: 'Orbitron', sans-serif; text-transform: uppercase; letter-spacing: 0.05em;
+            transition: all 0.2s ease-in-out; border-radius: 0.5rem; 
+            padding: 0.75rem 1.5rem; font-size: 0.9rem; font-weight: 600; 
+        }
+        .action-btn:hover:not(:disabled) { transform: translateY(-1px); }
+        .primary-action-btn { 
+            background-image: linear-gradient(to right, #4F46E5, #7C3AED); 
+            box-shadow: 0 4px 15px -5px rgba(124, 58, 237, 0.5); color: white;
+        }
+        .primary-action-btn:hover:not(:disabled) { box-shadow: 0 6px 20px -5px rgba(124, 58, 237, 0.7); }
+        .clear-btn {
+            background-color: rgba(71, 85, 105, 0.3); border: 1px solid rgba(100, 116, 139, 0.5); 
+            color: #cbd5e1; 
+        }
+        .clear-btn:hover:not(:disabled) { background-color: rgba(100, 116, 139, 0.4); border-color: #94a3b8; }
+        
+        #statusContainer { background-color: rgba(55, 65, 81, 0.3); border: 1px solid rgba(71, 85, 105, 0.5); }
+        #statusMessage { color: #9CA3AF; font-family: 'Orbitron', sans-serif; font-size: 0.875rem; } 
+        #statusContainer.status-error #statusMessage { color: #FCA5A5;  } 
+
+        /* Generated Image Display */
+        #generatedImageDisplayWrapper {
+            width: 100%; position: relative; padding-bottom: 100%; /* Aspect ratio 1:1 */
+            background-color: rgba(17,24,39,0.4); /* Darker than file input bg */
+            border: 1px solid rgba(55,65,81,0.7); border-radius: 0.75rem; overflow: hidden;
+        }
+        #generatedImageDisplay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            display: flex; align-items: center; justify-content: center;
+        }
+        #generatedImgElement {
+            max-width: 100%; max-height: 100%; object-fit: contain; border-radius: calc(0.75rem - 1px);
+        }
+        .image-placeholder-text { color: #6B7280; text-align: center; padding: 1rem; font-family: 'Orbitron', sans-serif;}
+        .image-skeleton-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(100deg, transparent 25%, rgba(99, 102, 241, 0.2) 50%, transparent 75%);
+            background-size: 250% 100%; animation: imageShimmerOverlayDark 2s linear infinite; display: none;
+        }
+        #generatedImageDisplay.loading .image-skeleton-overlay { display: block; }
+        @keyframes imageShimmerOverlayDark { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+        .download-btn {
+            background-color: rgba(79, 70, 229, 0.25); border: 1px solid rgba(99, 102, 241, 0.6);
+            color: #A5B4FC; font-weight: 500; padding: 0.75rem 1.75rem;
+            border-radius: 0.5rem; transition: all 0.2s ease;
+        }
+        .download-btn:hover:not(:disabled) {
+            background-color: rgba(99, 102, 241, 0.35); border-color: #818CF8; color: #c7d2fe;
+            transform: translateY(-1px); box-shadow: 0 5px 12px rgba(99, 102, 241, 0.2);
+        }
+        .download-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    </style>
+</head>
+<body class="flex flex-col items-center px-4 py-8 md:py-12">
+
+    <header class="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-8 md:mb-10 text-center">
+        <div class="flex items-center justify-center">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor" class="w-10 h-10 text-indigo-400">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 004.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 01-6.23-.803L4.2 15.3m15.6 0-1.278-.32A6.037 6.037 0 0112 13.5a6.037 6.037 0 01-6.522 1.48L4.2 15.3m15.6 0h.008v.004h-.008v-.004zm0 0l.008.002a.002.002 0 00-.002-.002h-.006zm0 0H12m0 0a.75.75 0 00-.75.75v5.25Z" />
+                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 21a2.25 2.25 0 002.25-2.25H9.75A2.25 2.25 0 0012 21z" fill="currentColor" opacity="0.5"/>
+            </svg>
+            <h1 class="ml-3 font-black text-3xl sm:text-4xl text-slate-50" style="font-family: 'Orbitron', sans-serif;">VISION WEAVER AI</h1>
+        </div>
+         <p class="mt-3 text-md lg:text-lg text-slate-400 max-w-2xl mx-auto">
+            Upload your image, and let AI weave an artistic Ghibli-style vision from its essence.
+        </p>
+    </header>
+
+    <div class="w-full max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12 px-4">
+        <!-- Left Column: Upload and Controls -->
+        <div class="glassmorphic-panel p-6 sm:p-8 space-y-6">
+            <section id="upload-section" class="space-y-4">
+                <h2 class="text-xl font-semibold text-slate-100 mb-3 text-center" style="font-family: 'Orbitron', sans-serif;">1. UPLOAD YOUR IMAGE</h2>
+                <label for="referenceImageInput" id="fileInputContainerLabel" class="file-input-area block p-6 text-center cursor-pointer">
+                    <div id="dropzoneContent">
+                        <i class="fas fa-cloud-upload-alt text-5xl text-indigo-400 mb-4"></i>
+                        <p class="font-semibold text-lg text-slate-200">Drag & drop or click</p>
+                        <p class="text-sm text-slate-400 mt-1">Max 4MB (PNG, JPG, WEBP)</p>
+                    </div>
+                    <img id="uploadedImagePreview" alt="Uploaded Image Preview" />
+                </label>
+                <input type="file" id="referenceImageInput" accept="image/png, image/jpeg, image/webp">
+            </section>
+
+            <section id="controls-section" class="space-y-3">
+                 <h2 class="text-xl font-semibold text-slate-100 mb-3 text-center" style="font-family: 'Orbitron', sans-serif;">2. GENERATE</h2>
+                <button id="processImageButton" class="action-btn primary-action-btn w-full py-3 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center">
+                    <i id="processImageIcon" class="fas fa-wand-magic-sparkles mr-2.5"></i>
+                    <span id="processImageText">Generate Artistic Image</span>
+                </button>
+                <button id="clearAllButton" class="action-btn clear-btn w-full py-3 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center">
+                    <i class="fas fa-times-circle mr-2.5"></i>
+                    Clear Selection
+                </button>
+            </section>
+            
+            <section id="status-section" class="hidden">
+                <div id="statusContainer" class="mt-3 p-3.5 rounded-lg border">
+                    <p id="statusMessage" class="text-sm text-center font-medium">Initializing...</p>
+                </div>
+            </section>
+
+            <section id="errorDisplayContainer" class="hidden bg-red-900/60 border-l-4 border-red-500 text-red-200 p-4 rounded-md shadow-md" role="alert">
+                <div class="flex">
+                    <div class="py-1"><i class="fas fa-exclamation-triangle mr-3 text-red-300 text-xl"></i></div>
+                    <div>
+                        <p class="font-bold text-red-100">Operation Failed</p>
+                        <p id="errorMessage" class="text-sm">Details will appear here.</p>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Right Column: Generated Image Display -->
+        <div class="glassmorphic-panel p-6 sm:p-8 space-y-6">
+            <h2 class="text-xl font-semibold text-slate-100 mb-3 text-center" style="font-family: 'Orbitron', sans-serif;">3. YOUR ARTISTIC VISION</h2>
+            <section id="generated-image-output-section">
+                <div id="generatedImageDisplayWrapper">
+                     <div id="generatedImageDisplay">
+                        <p id="imagePlaceholderText" class="image-placeholder-text">Your generated Ghibli-style image <br> will appear here...</p>
+                        <img id="generatedImgElement" src="#" alt="Generated Artistic Image" class="hidden">
+                        <div class="image-skeleton-overlay"></div>
+                    </div>
+                </div>
+                <div id="downloadButtonContainer" class="text-center mt-4 shrink-0 hidden">
+                    <button id="downloadImageButton" class="action-btn download-btn flex items-center justify-center mx-auto">
+                        <i class="fas fa-download mr-2"></i>
+                        Download Image
+                    </button>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <footer class="text-center mt-12 mb-6"> 
+        <p class="text-xs text-slate-600" style="font-family: 'Orbitron', sans-serif;">GEMINI AI MULTI-CORE ONLINE // VISION WEAVER V1.0</p>
+    </footer>
+
+    <script>
+        // --- API Keys Configuration (from Artisan Dream Engine, includes Image Insight's key) ---
+        const API_KEYS = [
+            "AIzaSyDSF270Y1VJf1fe4G8ZAuw7bOITbAlal74",
+            "AIzaSyBx2-nzwDEmvil677vHCnfFmWk0bjc2ktc",
+            "AIzaSyCP0_JSlzsnNKczFe-dBTZyoyKBwvvP6UE", // This was Image Insight's key
+            "AIzaSyDgEdgBX2VWf2PO4X29haQzISTDTemzuW4"
+        ];
+        let currentApiKeyIndex = 0; // Start with a random key or 0
+        const MAX_API_CALL_ATTEMPTS_PER_KEY_CYCLE = API_KEYS.length;
+        // --- End API Keys Configuration ---
+
+        // --- Model Names ---
+        const MULTIMODAL_DESC_MODEL_NAME = "gemini-2.5-flash-preview-05-20"; // For image-to-text (from Image Insight)
+        const TEXT_REFINE_MODEL_NAME = "gemini-2.5-flash-preview-05-20";    // For text-to-text refinement (from Artisan)
+        const IMAGE_GEN_MODEL_NAME = "gemini-2.0-flash-preview-image-generation"; // For text-to-image (from Artisan)
+
+        // --- Prompts & Instructions ---
+        // From Image Insight (for initial description)
+        const IMAGE_DESCRIPTION_PROMPT = "Describe this image in detail, focusing on its key subjects, objects, environment, artistic style, colors, and overall mood. The description should be suitable as a detailed prompt for an AI image generation model to create a similar image. Output only the descriptive prompt.";
+        const FIXED_ADDITIONAL_INSTRUCTION = "always output give me only Studio Ghibli style. But you need to keep the image functionality exactly the same; only the style needs to be changed.";
+        const IDENTIY_FINDER = "If you know or recognize someone, you must definitely state their name.";
+
+        // From Artisan Dream Engine (for prompt refinement)
+        const REFINE_SYSTEM_INSTRUCTION_UNREALISTIC = `As an AI prompt engineer, your core responsibility is to refine user input into a clear, highly descriptive, and structured prompt suitable for an advanced text-to-image generation model. Focus on vivid imagery, detailed descriptions of subjects, environments, artistic styles, lighting, and composition. Expand on the user's core idea to add depth and specificity. The output should be a single, coherent paragraph or a few closely related paragraphs forming the final prompt. Do not include conversational elements, self-references, or explanations of your process. Only output the refined prompt itself. For example, if the input is "cat in space", a refined prompt might be: "A photorealistic image of a fluffy ginger tabby cat wearing a miniature astronaut helmet, floating gracefully in the vast emptiness of space. Nebulae and distant galaxies twinkle in the background, with Earth visible as a small blue marble. The lighting is ethereal, with a soft glow emanating from a nearby star, casting subtle highlights on the cat's fur and helmet."`;
+
+        // --- HTML Elements ---
+        const referenceImageInputEl = document.getElementById('referenceImageInput');
+        const uploadedImagePreviewEl = document.getElementById('uploadedImagePreview');
+        const fileInputContainerLabelEl = document.getElementById('fileInputContainerLabel');
+        const dropzoneContentEl = document.getElementById('dropzoneContent'); 
+
+        const processImageButtonEl = document.getElementById('processImageButton');
+        const processImageIconEl = document.getElementById('processImageIcon');
+        const processImageTextEl = document.getElementById('processImageText');
+        const clearAllButtonEl = document.getElementById('clearAllButton');
+        
+        const statusSectionEl = document.getElementById('status-section');
+        const statusMessageEl = document.getElementById('statusMessage');
+        const statusContainerEl = document.getElementById('statusContainer');
+        
+        const errorDisplayContainerEl = document.getElementById('errorDisplayContainer');
+        const errorMessageEl = document.getElementById('errorMessage');
+
+        const generatedImageDisplayEl = document.getElementById('generatedImageDisplay');
+        const imagePlaceholderTextEl = document.getElementById('imagePlaceholderText');
+        const generatedImgElement = document.getElementById('generatedImgElement');
+        const downloadButtonContainerEl = document.getElementById('downloadButtonContainer');
+        const downloadImageButtonEl = document.getElementById('downloadImageButton');
+
+        // --- State Variables ---
+        let currentReferenceImageBase64 = null;
+        let currentReferenceImageMimeType = null;
+        let currentGeneratedImageSrc = null; // For the final generated image
+
+        // --- Helper Functions ---
+        function getCombinedDescriptionPrompt() {
+            return `${IMAGE_DESCRIPTION_PROMPT} Additional instructions: ${FIXED_ADDITIONAL_INSTRUCTION} ${IDENTIY_FINDER}`;
+        }
+
+        function updateStatus(message, isError = false, stage = null) { 
+            statusSectionEl.classList.remove('hidden'); 
+            statusMessageEl.textContent = message;
+            
+            statusContainerEl.classList.remove('status-error');
+            statusMessageEl.style.color = '#cbd5e1'; // Default progress color
+
+            if (isError) {
+                statusContainerEl.classList.add('status-error');
+                statusMessageEl.style.color = '#FCA5A5'; 
+            } else if (message.toLowerCase().includes("complete") || message.toLowerCase().includes("success")) {
+                statusMessageEl.style.color = '#6ee7b7'; // Success color
+            }
+        }
+
+        function displayError(message) {
+            errorMessageEl.textContent = message;
+            errorDisplayContainerEl.classList.remove('hidden');
+            updateStatus(`Error: ${message}`, true); // Also update main status as error
+            // Ensure the specific scanning animation for the uploader is stopped if it was on
+            fileInputContainerLabelEl.classList.remove('scan-animation');
+        }
+
+        function clearError() {
+            errorDisplayContainerEl.classList.add('hidden');
+            errorMessageEl.textContent = '';
+        }
+        
+        function setMainButtonLoadingState(isLoading, currentStageText = 'Generate Artistic Image') {
+            processImageButtonEl.disabled = isLoading;
+            clearAllButtonEl.disabled = isLoading; // Disable clear button during processing
+
+            if (isLoading) {
+                processImageIconEl.className = 'fas fa-spinner fa-spin mr-2.5';
+                processImageTextEl.textContent = currentStageText;
+                // Add scan animation to uploader only during the description phase
+                if (currentStageText.toLowerCase().includes("analyzing")) {
+                    fileInputContainerLabelEl.classList.add('scan-animation');
+                } else {
+                    fileInputContainerLabelEl.classList.remove('scan-animation');
+                }
+                // Add loading shimmer to generated image placeholder
+                generatedImageDisplayEl.classList.add('loading');
+            } else {
+                processImageIconEl.className = 'fas fa-wand-magic-sparkles mr-2.5'; 
+                processImageTextEl.textContent = 'Generate Artistic Image';
+                fileInputContainerLabelEl.classList.remove('scan-animation');
+                generatedImageDisplayEl.classList.remove('loading');
+                // Re-enable based on image presence
+                processImageButtonEl.disabled = !currentReferenceImageBase64;
+                clearAllButtonEl.disabled = !currentReferenceImageBase64 && !currentGeneratedImageSrc;
+            }
+        }
+        
+        async function callGenerativeAPI(modelName, requestPayload, isImageGenerationCall = false, attempt = 1) {
+            if (attempt > MAX_API_CALL_ATTEMPTS_PER_KEY_CYCLE) {
+                 console.error("All API keys failed after " + MAX_API_CALL_ATTEMPTS_PER_KEY_CYCLE + " attempts through a full cycle.");
+                 throw new Error(`All API keys exhausted or failed. Please check API key validity and quotas.`);
+            }
+            // Use a fresh random key for each initial attempt, then cycle systematically on retry
+            const keyToUse = API_KEYS[currentApiKeyIndex];
+            const API_URL_BASE = `https://generativelanguage.googleapis.com/v1beta/models/`;
+            const fullApiUrl = `${API_URL_BASE}${modelName}:generateContent?key=${keyToUse}`;
+
+            try {
+                const response = await fetch(fullApiUrl, { 
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json' }, 
+                    body: JSON.stringify(requestPayload) 
+                });
+                const responseData = await response.json().catch(() => ({ error: { message: "Non-JSON response from API. Check network or API endpoint." } }));
+
+                if (!response.ok) {
+                    const errorMessageText = responseData.error?.message?.toLowerCase() || "";
+                    // Check for specific errors that warrant key rotation
+                    if (response.status === 429 || // Quota exhausted
+                        (response.status === 400 && (errorMessageText.includes("api key not valid") || errorMessageText.includes("key is invalid"))) || // Invalid key
+                        (response.status === 403 && (errorMessageText.includes("permission denied") || errorMessageText.includes("key is restricted"))) // Key restricted
+                    ) {
+                        const previousKeySnippet = keyToUse.substring(0,10) + "..." + keyToUse.slice(-4);
+                        currentApiKeyIndex = (currentApiKeyIndex + 1) % API_KEYS.length; // Rotate to next key
+                        const nextKeySnippet = API_KEYS[currentApiKeyIndex].substring(0,10) + "..." + API_KEYS[currentApiKeyIndex].slice(-4);
+                        
+                        console.warn(`API Key ${previousKeySnippet} failed (Status: ${response.status}, Message: ${errorMessageText}). Rotating to key index ${currentApiKeyIndex} (${nextKeySnippet}). Attempt ${attempt}/${MAX_API_CALL_ATTEMPTS_PER_KEY_CYCLE}.`);
+                        updateStatus(`Switching API key due to usage limits/error. Retrying...`, false);
+                        // Important: Pass the incremented attempt number
+                        return callGenerativeAPI(modelName, requestPayload, isImageGenerationCall, attempt + 1);
+                    }
+                    // For other errors, throw directly
+                    let detail = `API Error (${response.status}): ${responseData.error?.message || response.statusText || "Unknown error from API."}`;
+                    if (String(responseData.error?.message).includes("User location is not supported")) detail = "API access from your current location is not supported by the model provider.";
+                    throw new Error(detail);
+                }
+                
+                // console.log(`API call successful with key index ${API_KEYS.indexOf(keyToUse)} (${keyToUse.substring(0,10)}...${keyToUse.slice(-4)})`);
+
+                // Handle response based on whether image generation was expected
+                if (isImageGenerationCall) {
+                    const candidate = responseData.candidates?.[0];
+                    if (!candidate) throw new Error("No candidate found in API response for image generation.");
+
+                    if (candidate.finishReason === "SAFETY" || responseData.promptFeedback?.blockReason) {
+                        const reason = responseData.promptFeedback?.blockReason || candidate.finishReason || "Safety";
+                        let safetyDetails = responseData.promptFeedback?.safetyRatings?.map(r => `${r.category.replace('HARM_CATEGORY_','')} (${r.probability})`).join(', ') || "Details not provided";
+                        throw new Error(`Image generation blocked. Reason: ${reason}. Details: ${safetyDetails}`);
+                    }
+                    const imgPart = candidate.content?.parts?.find(p => p.inlineData?.mimeType?.startsWith('image/'));
+                    if (imgPart && imgPart.inlineData.data) return imgPart.inlineData.data;
+                    
+                    const textPart = candidate.content?.parts?.find(p => p.text); // Check for textual error from image model
+                    if (textPart && textPart.text.toLowerCase().includes("unable to generate image")) {
+                         throw new Error(`API indicated inability to generate image: ${textPart.text}`);
+                    }
+                    throw new Error("Failed to find valid image data in API response for image generation.");
+                } else { // Text generation (description or refinement)
+                    const candidate = responseData.candidates?.[0];
+                    if (!candidate) throw new Error("No candidate found in API response for text generation.");
+
+                    if (candidate.finishReason === "SAFETY" || responseData.promptFeedback?.blockReason) {
+                        const reason = responseData.promptFeedback?.blockReason || candidate.finishReason || "Safety";
+                        let safetyDetails = responseData.promptFeedback?.safetyRatings?.map(r => `${r.category.replace('HARM_CATEGORY_','')} (${r.probability})`).join(', ') || "Details not provided";
+                        throw new Error(`Text generation blocked. Reason: ${reason}. Details: ${safetyDetails}`);
+                    }
+                    if (candidate.content?.parts?.[0]?.text) return candidate.content.parts[0].text.trim();
+                    throw new Error("Failed to extract text from API response.");
+                }
+            } catch (error) {
+                console.error(`Error in callGenerativeAPI (attempt ${attempt}, key index ${API_KEYS.indexOf(keyToUse)}):`, error);
+                // If it's a network error or similar, not an API key issue that gets retried, it will be thrown here.
+                throw error; 
+            }
+        }
+        
+        function clearAllSelections() {
+            currentReferenceImageBase64 = null;
+            currentReferenceImageMimeType = null;
+            referenceImageInputEl.value = ''; // Clear file input
+            uploadedImagePreviewEl.src = '';
+            uploadedImagePreviewEl.classList.remove('has-image');
+            fileInputContainerLabelEl.classList.remove('has-image-preview', 'scan-animation');
+            dropzoneContentEl.style.display = 'flex';
+            
+            // Reset generated image area
+            imagePlaceholderTextEl.classList.remove('hidden');
+            generatedImgElement.classList.add('hidden');
+            generatedImgElement.src = "#";
+            downloadButtonContainerEl.classList.add('hidden');
+            currentGeneratedImageSrc = null;
+            downloadImageButtonEl.disabled = true;
+
+            setMainButtonLoadingState(false); // Resets button text and icon
+            processImageButtonEl.disabled = true; // Disable until new image uploaded
+            clearAllButtonEl.disabled = true;
+
+            clearError();
+            statusSectionEl.classList.add('hidden');
+        }
+
+        referenceImageInputEl.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                if (file.size > 4 * 1024 * 1024) { // 4MB limit
+                    displayError("Image size exceeds 4MB. Please choose a smaller file.");
+                    clearAllSelections(); 
+                    return;
+                }
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    currentReferenceImageBase64 = reader.result.split(',')[1];
+                    currentReferenceImageMimeType = file.type;
+                    
+                    uploadedImagePreviewEl.src = reader.result;
+                    uploadedImagePreviewEl.classList.add('has-image');
+                    dropzoneContentEl.style.display = 'none';
+                    fileInputContainerLabelEl.classList.add('has-image-preview');
+
+                    processImageButtonEl.disabled = false;
+                    clearAllButtonEl.disabled = false;
+                    clearError();
+                    statusSectionEl.classList.add('hidden');
+                     // Clear previous generated image if a new one is uploaded
+                    imagePlaceholderTextEl.classList.remove('hidden');
+                    generatedImgElement.classList.add('hidden');
+                    generatedImgElement.src = "#";
+                    downloadButtonContainerEl.classList.add('hidden');
+                    currentGeneratedImageSrc = null;
+                    downloadImageButtonEl.disabled = true;
+                };
+                reader.onerror = () => {
+                    displayError("Failed to read the image file.");
+                    clearAllSelections();
+                }
+                reader.readAsDataURL(file);
+            } else {
+                // No file selected or selection cancelled, effectively a clear if no image was previously there
+                if (!currentReferenceImageBase64) {
+                    clearAllSelections();
+                }
+            }
+        });
+
+        processImageButtonEl.addEventListener('click', async () => {
+            if (!currentReferenceImageBase64 || !currentReferenceImageMimeType) {
+                displayError("Please select an image first.");
+                return;
+            }
+            
+            setMainButtonLoadingState(true, "Initializing...");
+            clearError();
+            // Reset previous generated image for new run
+            imagePlaceholderTextEl.classList.remove('hidden');
+            generatedImgElement.classList.add('hidden');
+            generatedImgElement.src = "#";
+            downloadButtonContainerEl.classList.add('hidden');
+            currentGeneratedImageSrc = null;
+
+            try {
+                // 1. Generate Initial Description
+                updateStatus("Analyzing image content...", false, "describe");
+                setMainButtonLoadingState(true, "Analyzing Image...");
+                const descriptionParts = [
+                    { text: getCombinedDescriptionPrompt() },
+                    { inlineData: { mimeType: currentReferenceImageMimeType, data: currentReferenceImageBase64 } }
+                ];
+                const descriptionPayload = {
+                    contents: [{ parts: descriptionParts }],
+                    generationConfig: { temperature: 0.3, maxOutputTokens: 1536, topP: 0.9, topK: 30 } 
+                };
+                const initialDescription = await callGenerativeAPI(MULTIMODAL_DESC_MODEL_NAME, descriptionPayload, false);
+                // console.log("Initial Description:", initialDescription); // For debugging
+
+                // 2. Refine Prompt
+                updateStatus("Crafting artistic prompt...", false, "refine");
+                setMainButtonLoadingState(true, "Refining Prompt...");
+                const refinementPayload = {
+                    contents: [{ role: "user", parts: [{ text: initialDescription }] }],
+                    systemInstruction: { parts: [{ text: REFINE_SYSTEM_INSTRUCTION_UNREALISTIC }] },
+                    generationConfig: { temperature: 0.7, topK: 40, topP: 0.95, maxOutputTokens: 1024 }
+                };
+                const refinedPrompt = await callGenerativeAPI(TEXT_REFINE_MODEL_NAME, refinementPayload, false);
+                // console.log("Refined Prompt:", refinedPrompt); // For debugging
+
+                // 3. Generate Final Image
+                updateStatus("Generating new artistic image...", false, "generate_image");
+                setMainButtonLoadingState(true, "Generating Image...");
+                const imageGenPayload = {
+                    contents: [{ parts: [{ text: refinedPrompt }] }],
+                    // Using default image generation config within callGenerativeAPI if specific one isn't set
+                    // It might be better to define a specific config here too if needed.
+                    // For now, Artisan's default inside callGenerativeAPI will be used.
+                     generationConfig: { responseModalities: ["TEXT", "IMAGE"] } // Explicitly request image
+                };
+                const generatedImageDataB64 = await callGenerativeAPI(IMAGE_GEN_MODEL_NAME, imageGenPayload, true);
+                
+                currentGeneratedImageSrc = `data:image/png;base64,${generatedImageDataB64}`;
+                imagePlaceholderTextEl.classList.add('hidden');
+                generatedImgElement.src = currentGeneratedImageSrc;
+                generatedImgElement.alt = `Generated Ghibli-style vision`;
+                generatedImgElement.classList.remove('hidden');
+                downloadButtonContainerEl.classList.remove('hidden');
+                downloadImageButtonEl.disabled = false;
+
+                updateStatus("Artistic vision generated successfully!", false, "complete");
+
+            } catch (error) {
+                console.error("Full Image Generation Pipeline Error:", error);
+                displayError(error.message || "An unexpected error occurred during the process.");
+                // Reset generated image area on error
+                imagePlaceholderTextEl.classList.remove('hidden');
+                generatedImgElement.classList.add('hidden');
+                generatedImgElement.src = "#";
+                downloadButtonContainerEl.classList.add('hidden');
+            } finally {
+                setMainButtonLoadingState(false);
+            }
+        });
+        
+        clearAllButtonEl.addEventListener('click', clearAllSelections);
+
+        downloadImageButtonEl.addEventListener('click', () => {
+            if (!currentGeneratedImageSrc || downloadImageButtonEl.disabled) return;
+            const link = document.createElement('a');
+            link.href = currentGeneratedImageSrc;
+            link.download = `vision_weaver_ai_art.png`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        });
+        
+        // Initial state
+        currentApiKeyIndex = Math.floor(Math.random() * API_KEYS.length); // Start with a random key
+        processImageButtonEl.disabled = true;
+        clearAllButtonEl.disabled = true;
+        downloadImageButtonEl.disabled = true;
+
+    </script>
+</body>
+</html>
